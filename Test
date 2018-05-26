@@ -1,0 +1,75 @@
+# A Retry from scratch
+from __future__ import print_function
+import getopt
+import logging
+import os
+import sys
+import pdb  # https://davidhamann.de/2017/04/22/debugging-jupyter-notebooks/  n next line, c continue
+import tweepy
+import json
+
+CONSUMER_KEY = 
+CONSUMER_SECRET = 
+OAUTH_TOKEN = 
+OAUTH_TOKEN_SECRET = 
+batch_size=100
+
+def get_tweet_id(line):
+    tweet_id = line.split(',')[0]
+    return tweet_id
+
+def get_tweets_single(twapi, idfilepath):
+    tweet_ids = list()
+    data = {}
+    data['tweets'] = []    
+    with open(idfilepath, 'r') as idfile:
+        for line in idfile:
+            tweet_id = get_tweet_id(line)
+            tweet_ids.append(tweet_id)
+            #if len(tweet_ids) < 5:
+            try:
+                tweet = twapi.get_status(tweet_id, tweet_mode='extended')
+                print('%s,%s' % (tweet_id, tweet.text.encode('UTF-8')))
+                data['tweets'].append(tweet._json)
+            except:
+                print(tweet_id)
+            #else:
+    with open('tweet_json.txt', 'w') as f:
+        json.dump(data, f)
+    
+def get_tweet_list(twapi, idlist, data):
+    tweets = twapi.statuses_lookup(id_=idlist, include_entities=False, trim_user=True)
+    for tweet in tweets:
+        data['tweets'].append(tweet._json)
+        #print('%s,%s' % (tweet.id, tweet.text.encode('UTF-8')))
+
+def get_tweets_bulk(twapi, idfilepath):
+    tweet_ids = list()
+    data = {}
+    data['tweets'] = []    
+    with open(idfilepath, 'r') as idfile:
+        for line in idfile:
+            tweet_id = get_tweet_id(line)
+            tweet_ids.append(tweet_id)
+            if len(tweet_ids) == batch_size:
+                #pdb.set_trace()
+                get_tweet_list(twapi, tweet_ids, data)
+                tweet_ids = list()
+                print(len(data['tweets']))
+    if len(tweet_ids) > 0:
+        get_tweet_list(twapi, tweet_ids, data)
+    pdb.set_trace()
+    with open('tweet_json.txt', 'w') as f:
+        json.dump(data, f)
+
+def main(args):
+    idfile = args
+    auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
+    auth.set_access_token(OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
+    #api = tweepy.API(auth)
+    api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+    get_tweets_bulk(api, idfile)
+    #get_tweets_single(api, idfile)
+
+if __name__ == '__main__':
+    main("twitter-archive-enhanced.csv")
