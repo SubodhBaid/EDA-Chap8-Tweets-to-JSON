@@ -1,0 +1,133 @@
+'''
+Gets text content for tweet IDs in twitter-archive-enhanced.csv
+https://stackoverflow.com/questions/28384588/twitter-api-get-tweets-with-specific-id
+'''
+# standard
+from __future__ import print_function
+import getopt
+import logging
+import os
+import sys
+# import traceback
+import pdb  # https://davidhamann.de/2017/04/22/debugging-jupyter-notebooks/  n next line, c continue
+# third-party: `pip install tweepy`
+import tweepy
+import json
+
+# global logger level is configured in main()
+Logger = None
+
+# Generate your own at https://apps.twitter.com/app
+CONSUMER_KEY = 'AnalxrvXh60PiXs8DC1iyAFrO'
+CONSUMER_SECRET = 'B8L1O4rlGbWeZxK05gloQY00hZ0MMWY8rEXLg58K5NgY8a3ucY'
+OAUTH_TOKEN = '998972546409287680-Q6n1LYSJYo6SJPeE5Yb4E3diZxUtD9Y'
+OAUTH_TOKEN_SECRET = 'Crk4RMk6hrUqwd4YeUxCahnHTSGrKC5NcLfT6FNbUBEVp'
+
+# batch size depends on Twitter limit, 100 at this time
+batch_size=100
+
+def get_tweet_id(line):
+    # Extracts and returns tweet ID from a line in the input.
+    # pdb.set_trace()
+    tweet_id = line.split(',')[0]
+    return tweet_id
+
+def get_tweets_single(twapi, idfilepath):
+    '''
+    Fetches content for tweet IDs in a file one at a time,
+    which means a ton of HTTPS requests, so NOT recommended.
+
+    `twapi`: Initialized, authorized API object from Tweepy
+    `idfilepath`: Path to file containing IDs
+    '''
+    # process IDs from the file
+    with open(idfilepath, 'r') as idfile:
+        for line in idfile:
+            tweet_id = get_tweet_id(line)
+            pdb.set_trace()
+            #Logger.debug('get_tweets_single: fetching tweet for ID %s', tweet_id)
+            try:
+                tweet = twapi.get_status(tweet_id)
+                print('%s,%s' % (tweet_id, tweet.text.encode('UTF-8')))
+                with open('tweet_json.txt', 'w') as f:
+                    json.dump(tweet, f)  
+            except tweepy.TweepError as te:
+                #Logger.warn('get_tweets_single: failed to get tweet ID %s: %s', tweet_id, te.message)
+                #Logger.warn('get_tweets_single: failed to get tweet ID %s: %s', tweet_id)
+                # traceback.print_exc(file=sys.stderr)
+
+def get_tweet_list(twapi, idlist):
+    '''
+    Invokes bulk lookup method.
+    Raises an exception if rate limit is exceeded.
+    '''
+    # fetch as little metadata as possible
+    tweets = twapi.statuses_lookup(id_=idlist, include_entities=False, trim_user=True)
+    if len(idlist) != len(tweets):
+        #Logger.warn('get_tweet_list: unexpected response size %d, expected %d', len(tweets), len(idlist))
+    #with open("tweet_json.txt") as f:
+    #    data = json.load(f)
+    #data.update(tweets)
+    #with open('tweet_json.txt', 'w') as f:
+    #    json.dump(data, f)        
+    #    json.dump(tweets, f)        
+    for tweet in tweets:
+        pdb.set_trace()
+        print('%s,%s' % (tweet.id, tweet.text.encode('UTF-8')))
+        with open('tweet_json.txt', 'w') as f:
+            json.dump(tweet, f)  
+
+def get_tweets_bulk(twapi, idfilepath):
+    '''
+    Fetches content for tweet IDs in a file using bulk request method,
+    which vastly reduces number of HTTPS requests compared to above;
+    however, it does not warn about IDs that yield no tweet.
+
+    `twapi`: Initialized, authorized API object from Tweepy
+    `idfilepath`: Path to file containing IDs
+    '''    
+    # process IDs from the file
+    tweet_ids = list()
+    with open(idfilepath, 'r') as idfile:
+        for line in idfile:
+            tweet_id = get_tweet_id(line)
+            #Logger.debug('Enqueing tweet ID %s', tweet_id)
+            tweet_ids.append(tweet_id)
+            # API limits batch size
+            if len(tweet_ids) == batch_size:
+                #Logger.debug('get_tweets_bulk: fetching batch of size %d', batch_size)
+                # pdb.set_trace()
+                get_tweet_list(twapi, tweet_ids)
+                tweet_ids = list()
+    # process remainder
+    if len(tweet_ids) > 0:
+        #Logger.debug('get_tweets_bulk: fetching last batch of size %d', len(tweet_ids))
+        get_tweet_list(twapi, tweet_ids)
+
+def usage():
+    print('Usage: get_tweets_by_id.py [options] file')
+    print('    -s (single) makes one HTTPS request per tweet ID')
+    print('    -v (verbose) enables detailed logging')
+    sys.exit()
+
+def main(args):
+    logging.basicConfig(level=logging.WARN)
+    #global Logger
+    #Logger = logging.getLogger('get_tweets_by_id')
+    idfile = args
+    #pdb.set_trace()
+    if not os.path.isfile(idfile):
+        print('Not found or not a file: %s' % idfile, file=sys.stderr)
+        usage()
+
+    # connect to twitter
+    auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
+    auth.set_access_token(OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
+    api = tweepy.API(auth)
+
+    # hydrate tweet IDs
+    #get_tweets_bulk(api, idfile)
+    get_tweets_single(api, idfile)
+    
+if __name__ == '__main__':
+    main("twitter-archive-enhanced.csv")
