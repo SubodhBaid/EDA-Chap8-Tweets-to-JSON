@@ -18,11 +18,10 @@ import json
 Logger = None
 
 # Generate your own at https://apps.twitter.com/app
-CONSUMER_KEY = 'AnalxrvXh60PiXs8DC1iyAFrO'
-CONSUMER_SECRET = 'B8L1O4rlGbWeZxK05gloQY00hZ0MMWY8rEXLg58K5NgY8a3ucY'
-OAUTH_TOKEN = '998972546409287680-Q6n1LYSJYo6SJPeE5Yb4E3diZxUtD9Y'
-OAUTH_TOKEN_SECRET = 'Crk4RMk6hrUqwd4YeUxCahnHTSGrKC5NcLfT6FNbUBEVp'
-
+CONSUMER_KEY = 
+CONSUMER_SECRET = 
+OAUTH_TOKEN = 
+OAUTH_TOKEN_SECRET = 
 # batch size depends on Twitter limit, 100 at this time
 batch_size=100
 
